@@ -59,23 +59,39 @@ pytest                            # unit + integration tests
 
 Ollama must serve `qwen3-vl:2b` on port 11434.
 
-## Run the dashboard on the laptop (camera attached)
+## Run the dashboard on the server (camera on the server, view over Remote Desktop)
 
-1. Get the code and the reference image: `data/` is git-ignored, so copy `data/simple_assembly.jpeg` to the laptop.
-2. Create a Python 3.11 env, then run `pip install -r requirements.txt && pip install -e .`.
-   `pyrealsense2` has pip wheels for Linux and Windows x86_64.
-3. Create `.env` with the same `NEO4J_PASSWORD` as on the server.
-4. Open an SSH tunnel to the server's Ollama and Neo4j, and keep it running:
+**One-time camera setup (needs an administrator with sudo).** `pyrealsense2` talks to the
+camera over USB directly, and by default a normal user may not open USB devices. Install
+Intel's udev rules once:
+```bash
+sudo curl -fsSL -o /etc/udev/rules.d/99-realsense-libusb.rules \
+  https://raw.githubusercontent.com/IntelRealSense/librealsense/master/config/99-realsense-libusb.rules
+sudo udevadm control --reload-rules && sudo udevadm trigger
+```
+Plug the D435 into a **USB 3** port on the server, directly rather than through a USB 2 hub.
+Check that it is visible:
+```bash
+python -c "import pyrealsense2 as rs; print([d.get_info(rs.camera_info.name) for d in rs.context().devices])"
+```
+
+**Every session:**
+1. Connect to the server with a Remote Desktop (RDP) client and log in as your user. This
+   gives the program a screen to open the dashboard window on.
+2. Open a terminal inside the remote desktop and check that the services are up:
    ```bash
-   ssh -N -L 11434:localhost:11434 -L 7687:localhost:7687 <user>@<server>
+   cd ~/thesis && source myenv/bin/activate
+   curl -s localhost:11434/api/tags > /dev/null && echo "Ollama OK" \
+     || (OLLAMA_MODELS=~/hf-cache ~/.local/bin/ollama serve > /dev/null 2>&1 &)
+   ./scripts/start_neo4j.sh
    ```
-5. Start the dashboard:
+3. Start the dashboard:
    ```bash
-   python scripts/run_dashboard.py                      # RealSense D435
-   python scripts/run_dashboard.py --source webcam:0    # any webcam
-   python scripts/run_dashboard.py --source data/demo_sequence   # recorded frames
+   python scripts/run_dashboard.py                              # RealSense D435
+   python scripts/run_dashboard.py --source data/demo_sequence  # test without the camera
    ```
-   Press `q` or `ESC` to quit. On a machine without a display, add `--headless` to save the dashboard frames to the log folder instead.
+   Press `q` or `ESC` to quit. Over plain SSH (no desktop), add `--headless` to save the
+   dashboard frames to the log folder instead of opening a window.
 
 Ask the graph questions in natural language:
 ```bash
