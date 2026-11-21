@@ -1,0 +1,39 @@
+# Configuration for the GraphRAG + VLM assembly-guidance pipeline.
+# Secrets and hosts (OLLAMA_HOST, NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD) come from .env.
+
+task_id: peg_assembly
+reference_image: data/simple_assembly.jpeg
+
+vlm:
+  model: qwen3-vl:2b
+  temperature: 0.0
+  # qwen3-vl:2b is a "thinking" model. With thinking on, it often loops until the token
+  # limit (3-6 s, no answer). An empty <think></think> prefill makes it answer directly
+  # in ~0.2-0.3 s with precise boxes (see notebooks/01_graphrag_vlm_assembly.ipynb).
+  disable_thinking: true
+  num_predict: 300
+  max_image_side: 768        # longest side sent to the VLM (pixels)
+  jpeg_quality: 85
+  timeout_s: 60
+
+graphrag:
+  database: neo4j
+  text2cypher_top_k: 10      # max rows returned by free-form NL -> Cypher questions
+
+pipeline:
+  interval_s: 3.0            # seconds between VLM inspections
+
+camera:
+  source: realsense          # realsense | webcam:<index> | path to image, folder of images, or video
+  width: 1280
+  height: 720
+  fps: 30
+  playlist_seconds: 4.0      # folder source: seconds per image
+
+dashboard:
+  window_name: Assembly Guidance
+  view_height: 540           # height of the reference and live views (pixels)
+  panel_height: 230          # height of the guidance/latency panel below the views
+
+logging:
+  dir: logs

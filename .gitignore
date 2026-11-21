@@ -9,3 +9,8 @@ docs/
 data/
 # Secrets
 .env
+
+# Pipeline output and build artefacts
+logs/
+*.egg-info/
+.pytest_cache/

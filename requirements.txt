@@ -1,0 +1,19 @@
+# Runtime
+langchain>=1.5
+langchain-ollama>=1.1
+langchain-neo4j>=0.11
+neo4j>=6.4
+opencv-python>=5.1
+numpy>=2.4
+pyyaml>=6.0
+python-dotenv>=1.0
+requests>=2.32
+pyrealsense2>=2.59   # Intel RealSense D435 (wheels: Linux/Windows x86_64)
+
+# Development
+pytest>=9.2
+ruff>=0.17
+pre-commit>=4.7
+jupyter
+nbconvert
+ipykernel
