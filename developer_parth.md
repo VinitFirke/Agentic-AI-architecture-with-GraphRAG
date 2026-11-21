@@ -185,6 +185,7 @@ Each module has a clear input and output. Example:
 # src/thesis/models/ollama_client.py
 class OllamaClient:
     """Talks to a local Ollama server. Knows nothing about datasets or metrics."""
+
     def generate(self, prompt: str, image_path: str | None = None) -> str: ...
 ```
 If the Ollama client breaks, data loading and metrics still work and can still be tested.
