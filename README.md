@@ -39,8 +39,9 @@ src/thesis/knowledge/          ontology, Neo4j graph builder, GraphRAG (verify +
 src/thesis/vision/             VLM client (LangChain + Ollama), perception, camera sources
 src/thesis/pipeline/           guidance cycle, background loop, communication log
 src/thesis/ui/dashboard.py     OpenCV dashboard
-scripts/                       start_neo4j.sh, build_graph.py, run_dashboard.py, ask_graph.py,
-                               make_test_frames.py
+scripts/                       start_neo4j.sh, build_graph.py, serve_pipeline.py, run_client.py,
+                               run_dashboard.py, ask_graph.py, make_test_frames.py
+src/thesis/remote/             HTTP server + laptop client for the remote camera setup
 notebooks/01_graphrag_vlm_assembly.ipynb   walkthrough with measurements
 tests/                         unit tests (+ integration tests that need Neo4j)
 ```
@@ -59,39 +60,49 @@ pytest                            # unit + integration tests
 
 Ollama must serve `qwen3-vl:2b` on port 11434.
 
-## Run the dashboard on the server (camera on the server, view over Remote Desktop)
+## Run with the camera on the laptop (processing on the server)
 
-**One-time camera setup (needs an administrator with sudo).** `pyrealsense2` talks to the
-camera over USB directly, and by default a normal user may not open USB devices. Install
-Intel's udev rules once:
-```bash
-sudo curl -fsSL -o /etc/udev/rules.d/99-realsense-libusb.rules \
-  https://raw.githubusercontent.com/IntelRealSense/librealsense/master/config/99-realsense-libusb.rules
-sudo udevadm control --reload-rules && sudo udevadm trigger
+The camera and the OpenCV dashboard run on the laptop. The VLM, GraphRAG, Neo4j and the
+communication log run on the server. The laptop sends one frame every `interval_s` seconds
+and gets back the guidance and the boxes to draw.
+
 ```
-Plug the D435 into a **USB 3** port on the server, directly rather than through a USB 2 hub.
-Check that it is visible:
-```bash
-python -c "import pyrealsense2 as rs; print([d.get_info(rs.camera_info.name) for d in rs.context().devices])"
+Laptop: D435 → run_client.py ──JPEG──▶ [SSH tunnel :8765] ──▶ Server: serve_pipeline.py
+        OpenCV dashboard  ◀──JSON (status, message, boxes, latencies)──┘   VLM + GraphRAG + log
 ```
 
-**Every session:**
-1. Connect to the server with a Remote Desktop (RDP) client and log in as your user. This
-   gives the program a screen to open the dashboard window on.
-2. Open a terminal inside the remote desktop and check that the services are up:
-   ```bash
-   cd ~/thesis && source myenv/bin/activate
-   curl -s localhost:11434/api/tags > /dev/null && echo "Ollama OK" \
-     || (OLLAMA_MODELS=~/hf-cache ~/.local/bin/ollama serve > /dev/null 2>&1 &)
-   ./scripts/start_neo4j.sh
-   ```
-3. Start the dashboard:
-   ```bash
-   python scripts/run_dashboard.py                              # RealSense D435
-   python scripts/run_dashboard.py --source data/demo_sequence  # test without the camera
-   ```
-   Press `q` or `ESC` to quit. Over plain SSH (no desktop), add `--headless` to save the
-   dashboard frames to the log folder instead of opening a window.
+**On the server** (e.g. in `tmux`, so it keeps running when you disconnect):
+```bash
+cd ~/thesis && source myenv/bin/activate
+curl -s localhost:11434/api/tags > /dev/null || (OLLAMA_MODELS=~/hf-cache ~/.local/bin/ollama serve > /dev/null 2>&1 &)
+./scripts/start_neo4j.sh
+python scripts/serve_pipeline.py
+```
+
+**On the laptop, once:** get the code (push the branch and clone it, or copy `src/`,
+`scripts/`, `configs/`, `pyproject.toml` and `requirements-client.txt`), then:
+```bash
+python -m venv .venv && source .venv/bin/activate     # Windows: .venv\Scripts\activate
+pip install -r requirements-client.txt
+pip install --no-deps -e .
+```
+The laptop needs no `.env`, model, Neo4j or reference image: the client downloads the
+reference image from the server.
+
+**On the laptop, every session:**
+```bash
+ssh -N -L 8765:localhost:8765 firke@134.169.80.170   # terminal 1: keep open
+python scripts/run_client.py                          # terminal 2: RealSense D435
+python scripts/run_client.py --source webcam:0        # or any webcam
+```
+Press `q` or `ESC` to quit. The communication log is written on the server in
+`logs/<timestamp>/`. The worker rows include the network round trip measured on the laptop.
+
+### Everything on one machine
+
+`scripts/run_dashboard.py` runs the camera, pipeline and dashboard in one process. Use it
+when the camera is attached to the machine that runs the models, or with `--headless` to
+test on the server (dashboard frames are saved to the log folder).
 
 Ask the graph questions in natural language:
 ```bash

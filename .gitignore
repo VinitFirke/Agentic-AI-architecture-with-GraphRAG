@@ -12,5 +12,6 @@ data/
 
 # Pipeline output and build artefacts
 logs/
+client_frames/
 *.egg-info/
 .pytest_cache/

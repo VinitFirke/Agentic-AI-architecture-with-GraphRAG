@@ -14,6 +14,8 @@ log = logging.getLogger(__name__)
 
 def connect(settings: Settings) -> Driver:
     """Open a Neo4j driver and check that the server is reachable."""
+    if not settings.neo4j_password:
+        raise RuntimeError("NEO4J_PASSWORD is not set. Add it to .env (see .env.example).")
     driver = GraphDatabase.driver(
         settings.neo4j_uri,
         auth=(settings.neo4j_user, settings.neo4j_password),

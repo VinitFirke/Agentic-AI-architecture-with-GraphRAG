@@ -99,20 +99,28 @@ class GuidanceSystem:
 
     def log_delivery(self, result: CycleResult, t_shown: float) -> None:
         """Log the worker message once it is actually on screen (called by the dashboard)."""
+        result.end_to_end_ms = (t_shown - result.t_capture) * 1000
+        self.log_worker_message(result, (t_shown - result.t_ready) * 1000, result.end_to_end_ms)
+
+    def log_worker_message(
+        self, result: CycleResult, hop_ms: float, end_to_end_ms: float, extra: str = ""
+    ) -> None:
+        """Write the VLM -> Worker row. The remote client passes latencies it measured itself."""
         d = result.decision
         marks = []
         if d.highlight_part:
             marks.append(f"mark part {d.highlight_part['id']}")
         if d.target_position and d.status != "success":
             marks.append(f"mark target {d.target_position['id']}")
-        result.end_to_end_ms = (t_shown - result.t_capture) * 1000
+        if extra:
+            marks.append(extra)
         self.log.add(
             result.cycle,
             "VLM",
             "Worker",
             f"[{d.status.upper()}] {d.message}",
-            (t_shown - result.t_ready) * 1000,
-            result.end_to_end_ms,
+            hop_ms,
+            end_to_end_ms,
             ", ".join(marks),
         )
 

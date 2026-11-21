@@ -1,6 +1,7 @@
 import pytest
 
-from thesis.vision.perception import Observation, cell_center, grid_cell, parse_grounding
+from thesis.vision.geometry import cell_center, grid_cell
+from thesis.vision.perception import Observation, parse_grounding
 
 BOARD = (300.0, 200.0, 600.0, 800.0)  # 300 wide, 600 high
 

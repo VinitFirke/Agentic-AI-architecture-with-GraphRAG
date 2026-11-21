@@ -34,7 +34,7 @@ class Settings:
 
 
 def load_settings(config_path: str | Path = DEFAULT_CONFIG) -> Settings:
-    """Read the YAML config and .env. Raises KeyError if a required env var is missing."""
+    """Read the YAML config and .env (the laptop client needs no Neo4j password)."""
     load_dotenv(PROJECT_ROOT / ".env")
     with open(config_path, encoding="utf-8") as f:
         raw = yaml.safe_load(f)
@@ -43,5 +43,5 @@ def load_settings(config_path: str | Path = DEFAULT_CONFIG) -> Settings:
         ollama_host=os.environ.get("OLLAMA_HOST", "http://localhost:11434"),
         neo4j_uri=os.environ.get("NEO4J_URI", "bolt://localhost:7687"),
         neo4j_user=os.environ.get("NEO4J_USER", "neo4j"),
-        neo4j_password=os.environ["NEO4J_PASSWORD"],
+        neo4j_password=os.environ.get("NEO4J_PASSWORD", ""),
     )

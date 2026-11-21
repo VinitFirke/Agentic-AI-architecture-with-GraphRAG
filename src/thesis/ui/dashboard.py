@@ -11,12 +11,15 @@ Markings on the live view:
 from __future__ import annotations
 
 import time
+from typing import TYPE_CHECKING
 
 import cv2
 import numpy as np
 
-from thesis.pipeline.guidance import CycleResult
-from thesis.vision.perception import Box, cell_center, to_pixels
+from thesis.vision.geometry import Box, cell_center, to_pixels
+
+if TYPE_CHECKING:  # the laptop client renders results without the server-side libraries
+    from thesis.pipeline.guidance import CycleResult
 
 FONT = cv2.FONT_HERSHEY_SIMPLEX
 BG = (32, 32, 32)
@@ -228,6 +231,8 @@ class DashboardRenderer:
                 f"GraphRAG (Cypher): {result.graphrag_ms:.1f} ms   VLM speed: "
                 f"{(sum(tps) / len(tps)) if tps else 0:.0f} tok/s"
             )
+            if getattr(result, "network_ms", None) is not None:  # remote client only
+                lines.append(f"network round trip (laptop <-> server): {result.network_ms:.0f} ms")
             if last_e2e_ms is not None:
                 lines.append(f"end-to-end (frame -> worker, last): {last_e2e_ms:.0f} ms")
         for line in lines:

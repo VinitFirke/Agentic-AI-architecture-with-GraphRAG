@@ -1,0 +1,8 @@
+# Laptop client only (camera + OpenCV dashboard). Install with:
+#   pip install -r requirements-client.txt && pip install --no-deps -e .
+opencv-python>=4.10
+numpy>=1.26
+requests>=2.31
+pyyaml>=6.0
+python-dotenv>=1.0
+pyrealsense2>=2.55   # Intel RealSense D435 (wheels: Linux/Windows x86_64)

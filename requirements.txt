@@ -8,6 +8,7 @@ numpy>=2.4
 pyyaml>=6.0
 python-dotenv>=1.0
 requests>=2.32
+flask>=3.1           # pipeline server for the laptop client
 pyrealsense2>=2.59   # Intel RealSense D435 (wheels: Linux/Windows x86_64)
 
 # Development
