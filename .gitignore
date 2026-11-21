@@ -1,0 +1,12 @@
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+myenv/
+
+# Project folders
+docs/
+data/
+# Secrets
+.env
+
