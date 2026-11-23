@@ -32,10 +32,13 @@ log = logging.getLogger("client")
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
     ap.add_argument("--config", default=str(DEFAULT_CONFIG))
-    ap.add_argument("--server", default=f"http://localhost:{DEFAULT_PORT}")
+    # 127.0.0.1, not "localhost": on Windows "localhost" tries IPv6 first, which can add ~2 s.
+    ap.add_argument("--server", default=f"http://127.0.0.1:{DEFAULT_PORT}")
     ap.add_argument("--source", help="realsense | webcam:<n> | image/folder/video path")
     ap.add_argument("--interval", type=float, help="seconds between VLM inspections")
     ap.add_argument("--headless", action="store_true", help="save frames instead of a window")
+    ap.add_argument("--max-side", type=int, help="resize frames to this longest side before upload")
+    ap.add_argument("--jpeg-quality", type=int, help="upload JPEG quality (1-100)")
     ap.add_argument("--max-cycles", type=int, default=0, help="stop after N cycles (0 = no limit)")
     args = ap.parse_args()
     logging.basicConfig(
@@ -45,11 +48,16 @@ def main() -> None:
 
     st = load_settings(args.config)
     vcfg, dcfg, ccfg = st["vlm"], st["dashboard"], st["camera"]
+    upcfg = st.raw.get("client", {})
     client = RemoteClient(
         args.server,
         args.interval or st["pipeline"]["interval_s"],
-        max_side=vcfg["max_image_side"],
+        max_side=args.max_side or upcfg.get("max_side", 640),
+        jpeg_quality=args.jpeg_quality or upcfg.get("jpeg_quality", 70),
         timeout_s=vcfg["timeout_s"],
+    )
+    log.info(
+        "Upload: frames resized to %d px, JPEG quality %d", client.max_side, client.jpeg_quality
     )
     try:
         reference, ref_result = client.start_session()

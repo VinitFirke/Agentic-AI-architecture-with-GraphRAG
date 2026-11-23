@@ -88,14 +88,22 @@ class PipelineService:
         out["server_ms"] = (time.perf_counter() - t_received) * 1000
         return out
 
-    def delivered(self, cycle: int, hop_ms: float, end_to_end_ms: float, network_ms: float) -> None:
+    def delivered(
+        self,
+        cycle: int,
+        hop_ms: float,
+        end_to_end_ms: float,
+        network_ms: float,
+        upload_kb: float | None = None,
+    ) -> None:
         with self.lock:
             result = self.recent.get(cycle)
             if self.system is None or result is None:
                 return
-            self.system.log_worker_message(
-                result, hop_ms, end_to_end_ms, f"network round trip {network_ms:.0f} ms"
-            )
+            note = f"network round trip {network_ms:.0f} ms"
+            if upload_kb is not None:
+                note += f", upload {upload_kb:.0f} KB"
+            self.system.log_worker_message(result, hop_ms, end_to_end_ms, note)
 
     def close_session(self) -> dict:
         with self.lock:
@@ -144,8 +152,13 @@ def create_app(service: PipelineService) -> Flask:
     @app.post("/delivered")
     def delivered():
         d = request.get_json(force=True)
+        upload_kb = d.get("upload_kb")
         service.delivered(
-            int(d["cycle"]), float(d["hop_ms"]), float(d["end_to_end_ms"]), float(d["network_ms"])
+            int(d["cycle"]),
+            float(d["hop_ms"]),
+            float(d["end_to_end_ms"]),
+            float(d["network_ms"]),
+            None if upload_kb is None else float(upload_kb),
         )
         return jsonify(ok=True)
 

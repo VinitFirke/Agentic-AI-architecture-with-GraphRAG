@@ -26,8 +26,8 @@ class RemoteClient:
         self,
         server_url: str,
         interval_s: float,
-        max_side: int = 768,
-        jpeg_quality: int = 90,
+        max_side: int = 640,
+        jpeg_quality: int = 70,
         timeout_s: float = 30.0,
     ):
         self.url = server_url.rstrip("/")
@@ -35,7 +35,10 @@ class RemoteClient:
         self.max_side = max_side
         self.jpeg_quality = jpeg_quality
         self.timeout_s = timeout_s
+        # One Session = one kept-alive TCP connection through the SSH tunnel for every request,
+        # instead of a new TCP + tunnel channel setup per frame.
         self.http = requests.Session()
+        self.http.headers["Connection"] = "keep-alive"
         self._frame: tuple[np.ndarray, float] | None = None
         self._lock = threading.Lock()
         self._stop = threading.Event()
@@ -85,6 +88,7 @@ class RemoteClient:
             "hop_ms": (t_shown - result.t_response) * 1000,
             "end_to_end_ms": result.end_to_end_ms,
             "network_ms": result.network_ms,
+            "upload_kb": result.upload_kb,
         }
         threading.Thread(target=self._post_delivered, args=(body,), daemon=True).start()
 
@@ -95,11 +99,24 @@ class RemoteClient:
             log.warning("Could not report delivery: %s", exc)
 
     def _encode(self, frame: np.ndarray) -> bytes:
+        """Shrink the frame on the laptop and JPEG-encode it in colour for the upload."""
+        if frame.ndim == 2:  # never send grayscale: the VLM needs the yellow/green colours
+            frame = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
+        elif frame.shape[2] == 4:
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGRA2BGR)
         h, w = frame.shape[:2]
         scale = min(1.0, self.max_side / max(h, w))
         if scale < 1.0:
-            frame = cv2.resize(frame, (int(w * scale), int(h * scale)), cv2.INTER_AREA)
-        ok, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, self.jpeg_quality])
+            frame = cv2.resize(
+                frame, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA
+            )
+        params = [
+            cv2.IMWRITE_JPEG_QUALITY,
+            self.jpeg_quality,
+            cv2.IMWRITE_JPEG_OPTIMIZE,
+            1,  # optimal Huffman tables: smaller file, same pixels
+        ]
+        ok, buf = cv2.imencode(".jpg", frame, params)
         if not ok:
             raise ValueError("Could not encode frame")
         return buf.tobytes()

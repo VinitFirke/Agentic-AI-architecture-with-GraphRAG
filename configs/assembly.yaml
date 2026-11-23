@@ -23,6 +23,10 @@ graphrag:
 pipeline:
   interval_s: 3.0            # seconds between VLM inspections
 
+client:                      # laptop side of the remote setup (scripts/run_client.py)
+  max_side: 640              # resize camera frames on the laptop before upload (longest side, px)
+  jpeg_quality: 70           # upload JPEG quality; frames stay 3-channel colour (RGB kept)
+
 camera:
   source: realsense          # realsense | webcam:<index> | path to image, folder of images, or video
   width: 1280
